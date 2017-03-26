@@ -1,5 +1,13 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <getopt.h>
+#include <unistd.h>
+#include <complex.h>
+#include <fftw3.h>
+#include <math.h>
+#include <time.h>
 
-void test04 ( )
+int main()
 
 /******************************************************************************/
 /*
@@ -106,7 +114,7 @@ void test04 ( )
     for ( j = 0; j < nyh; j++ )
     {
       printf ( "  %4d  %4d  %12f  %12f\n", 
-      i, j, out[i*nyh+j][0], out[i*nyh+j][1] );
+      i, j, creal(out[i*nyh+j]), cimag(out[i*nyh+j]));
     }
   }
 /*
@@ -140,5 +148,5 @@ void test04 ( )
   free ( in2 );
   fftw_free ( out );
 
-  return;
+  return 0;
 }
