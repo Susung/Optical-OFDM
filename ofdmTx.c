@@ -12,8 +12,8 @@ int main(int argc, char*argv[]) {
 	char *input = "test";
 	char *output = "transmitted.txt";
 	int dopt;
-	int numCarriers = 64;
-	int dataLength = 256;
+	int numCarriers = 16;
+	int dataLength = 1048;
 	
 	while ((dopt = getopt(argc,argv,"p:n:")) != EOF) {
 		switch (dopt) {
@@ -58,12 +58,8 @@ int main(int argc, char*argv[]) {
 			symstream[b * 4 + 2] = (buf[b] & 0x0C) >> 2;
 			symstream[b * 4 + 1] = (buf[b] & 0x30) >> 4;
 			symstream[b * 4] = (buf[b] & 0xC0) >> 6;
-			printf("%c : ",buf[b]);
-			printf("%u %u %u %u\n",
-				symstream[b * 4],
-				symstream[b * 4 + 1],
-				symstream[b * 4 + 2],
-				symstream[b * 4 + 3]);
+			//printf("%c : ",buf[b]);
+			//printf("%u %u %u %u\n", symstream[b * 4], symstream[b * 4 + 1], symstream[b * 4 + 2], symstream[b * 4 + 3]);
 		}
 
 		// constellation mapping

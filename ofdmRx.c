@@ -12,8 +12,8 @@ int main(int argc, char*argv[]) {
 	char *input = "transmitted.txt";
 	char *output = "output.txt";
 	int dopt;
-	int numCarriers = 64;
-	int dataLength = 256;
+	int numCarriers = 16;
+	int dataLength = 1048;
 	
 	while ((dopt = getopt(argc,argv,"p:n:")) != EOF) {
 		switch (dopt) {
@@ -62,23 +62,22 @@ int main(int argc, char*argv[]) {
 
 			for(int c = 0;c < numCarriers * (dataLength/2 + 1);c++) {
 				unsigned int sym;
-				if(creal(fftOut[c]) > 0.707 && cimag(fftOut[c]) > 0.707) 
+				if(creal(fftOut[c]) > 0 && cimag(fftOut[c]) > 0) 
 					sym = 0;
-				else if(creal(fftOut[c]) > 0.707 && cimag(fftOut[c]) < 0.707)
+				else if(creal(fftOut[c]) > 0 && cimag(fftOut[c]) < 0)
 					sym = 1;
-				else if(creal(fftOut[c]) < 0.707 && cimag(fftOut[c]) > 0.707)
+				else if(creal(fftOut[c]) < 0 && cimag(fftOut[c]) > 0)
 					sym = 2;
-				else if(creal(fftOut[c]) < 0.707 && cimag(fftOut[c]) < 0.707)
+				else if(creal(fftOut[c]) < 0 && cimag(fftOut[c]) < 0)
 					sym = 3;
 				else
-					sym = 2;
+					sym = 0;
 				symstream[c] = sym;
 			}
 			
 			for(int b = 0;b < numCarriers/4 * (dataLength/2 + 1);b++) {
 				unsigned char oneByte = (symstream[b * 4] << 6) + (symstream[b * 4 + 1] << 4) + (symstream[b * 4 + 2] << 2) + symstream[b * 4 + 3];
-				if(oneByte == 0) continue;
-				fprintf(fileOut, "%c", oneByte);
+				if(oneByte != 0) fprintf(fileOut, "%c", oneByte);
 			}
 			
 			free(fftOut);
