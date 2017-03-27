@@ -13,7 +13,7 @@ int main(int argc, char*argv[]) {
 	char *output = "transmitted.txt";
 	int dopt;
 	int numCarriers = 16;
-	int dataLength = 1048;
+	int dataLength = 64;
 	
 	while ((dopt = getopt(argc,argv,"p:n:")) != EOF) {
 		switch (dopt) {
@@ -44,11 +44,12 @@ int main(int argc, char*argv[]) {
 	 * The data length(column) for complex matrix must be (x/2 + 1) of the ifft output (real) matrix due to hermitian symmetry
 	 * must be divided by 4 since every char is 1 byte
 	 */
-	unsigned char buf[numCarriers/4 * (dataLength/2 + 1)]; 
+	int guard = dataLength/16;
+	unsigned char buf[numCarriers/4 * (dataLength/2 + 1 - 2 * guard)]; 
 	size_t nread;
 	while((nread = fread(buf, 1, sizeof buf, fileIn)) > 0) {
 		// array to hold symbol data
-		unsigned int *symstream = (unsigned int*) malloc(sizeof(unsigned int) * numCarriers * (dataLength/2 + 1)); 
+		unsigned int *symstream = (unsigned int*) malloc(sizeof(unsigned int) * numCarriers * (dataLength/2 + 1 - 2 * guard)); 
 		fftw_complex *fftIn = fftw_malloc(sizeof(fftw_complex) * numCarriers * (dataLength/2 + 1));
 		double *fftOut = (double*) malloc(sizeof(double) * numCarriers * dataLength);
 		
@@ -63,21 +64,30 @@ int main(int argc, char*argv[]) {
 		}
 
 		// constellation mapping
-		for(int c = 0;c < numCarriers * (dataLength/2 + 1);c++) {
-			if(c < nread * 4) {
-				if(symstream[c] == 0) 
-					fftIn[c] = 0.707 + I * 0.707;
-				else if(symstream[c] == 1)
-					fftIn[c] = 0.707 - I * 0.707;
-				else if(symstream[c] == 2)
-					fftIn[c] = -0.707 + I * 0.707;
-				else
-					fftIn[c] = -0.707 - I * 0.707;
-			} else {
-				fftIn[c] = 0.707 + I * 0.707; // zero filling
+		for(int r = 0;r < numCarriers;r++) {
+			for(int g = 0;g < guard;g++) {
+				fftIn[r*(dataLength/2 + 1)+g] = 0 + I * 0;
+				//printf("[%lf, %lf] ", creal(fftIn[r*(dataLength/2 + 1)+g]), cimag(fftIn[r*(dataLength/2 + 1)+g]));
 			}
-			//printf("%lf, %lf\n", creal(fftIn[c]), cimag(fftIn[c]));
+			for(int c = guard;c < dataLength/2 + 1 - guard;c++) {
+				unsigned char sym = symstream[r*(dataLength/2 + 1 - guard*2)+(c-guard)];
+				if(sym == 0) 
+					fftIn[r*(dataLength/2 + 1)+c] = 0.707 + I * 0.707;
+				else if(sym == 1)
+					fftIn[r*(dataLength/2 + 1)+c] = 0.707 - I * 0.707;
+				else if(sym == 2)
+					fftIn[r*(dataLength/2 + 1)+c] = -0.707 + I * 0.707;
+				else
+					fftIn[r*(dataLength/2 + 1)+c] = -0.707 - I * 0.707;
+				//printf("[%lf, %lf] ", creal(fftIn[r*(dataLength/2 + 1)+c]), cimag(fftIn[r*(dataLength/2 + 1)+c]));
+			}
+			for(int g = dataLength/2 + 1 - guard;g < dataLength/2 + 1;g++) {
+				fftIn[r*(dataLength/2 + 1)+g] = 0 + I * 0;
+				//printf("[%lf, %lf] ", creal(fftIn[r*(dataLength/2 + 1)+g]), cimag(fftIn[r*(dataLength/2 + 1)+g]));
+			}
+			//printf("\n");
 		}
+		
 		//for(int c = 0;c < numCarriers * (dataLength/2 + 1);c++) {
 			//printf("%lf, %lf\n", creal(fftIn[c]), cimag(fftIn[c]));
 		//}

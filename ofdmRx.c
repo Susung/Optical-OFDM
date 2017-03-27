@@ -13,7 +13,7 @@ int main(int argc, char*argv[]) {
 	char *output = "output.txt";
 	int dopt;
 	int numCarriers = 16;
-	int dataLength = 1048;
+	int dataLength = 64;
 	
 	while ((dopt = getopt(argc,argv,"p:n:")) != EOF) {
 		switch (dopt) {
@@ -44,6 +44,7 @@ int main(int argc, char*argv[]) {
 	ssize_t read;
 	double *fftIn = (double*) malloc(sizeof(double) * numCarriers * dataLength);
 	int i = 0;
+	int guard = dataLength/16;
 	while((read = getline(&line, &len, fileIn)) != -1) {
 		char *ptr;
 		double ret;
@@ -54,28 +55,30 @@ int main(int argc, char*argv[]) {
 			int size1 = numCarriers;
 			int size2 = dataLength;
 			//serial to parralel + FFT + parallel to serial
-			fftw_complex* fftOut =fftw_malloc(sizeof(fftw_complex) * numCarriers * (dataLength/2 + 1));
+			fftw_complex* fftOut = fftw_malloc(sizeof(fftw_complex) * numCarriers * (dataLength/2 + 1));
 			fftw_plan rxPlan = fftw_plan_dft_r2c_2d(size1, size2, fftIn, fftOut, FFTW_ESTIMATE);
 			fftw_execute(rxPlan);
 			
-			unsigned int *symstream = (unsigned int*) malloc(sizeof(unsigned int) * numCarriers * (dataLength/2 + 1)); 
+			unsigned int *symstream = (unsigned int*) malloc(sizeof(unsigned int) * numCarriers * (dataLength/2 + 1 - 2 * guard)); 
 
-			for(int c = 0;c < numCarriers * (dataLength/2 + 1);c++) {
-				unsigned int sym;
-				if(creal(fftOut[c]) > 0 && cimag(fftOut[c]) > 0) 
-					sym = 0;
-				else if(creal(fftOut[c]) > 0 && cimag(fftOut[c]) < 0)
-					sym = 1;
-				else if(creal(fftOut[c]) < 0 && cimag(fftOut[c]) > 0)
-					sym = 2;
-				else if(creal(fftOut[c]) < 0 && cimag(fftOut[c]) < 0)
-					sym = 3;
-				else
-					sym = 0;
-				symstream[c] = sym;
+			for(int r = 0;r < numCarriers ;r++) {
+				for(int c = guard;c < dataLength/2 + 1 - guard;c++) {
+					fftw_complex comp = fftOut[r*(dataLength/2 + 1)+c];
+					unsigned int sym;
+					if(creal(comp) > 0 && cimag(comp) > 0) 
+						sym = 0;
+					else if(creal(comp) > 0 && cimag(comp) < 0)
+						sym = 1;
+					else if(creal(comp) < 0 && cimag(comp) > 0)
+						sym = 2;
+					else
+						sym = 3;
+					//printf("[%lf, %lf]\n", creal(comp), cimag(comp));
+					symstream[r*(dataLength/2 + 1 - 2*guard)+c-guard] = sym;
+				}
 			}
 			
-			for(int b = 0;b < numCarriers/4 * (dataLength/2 + 1);b++) {
+			for(int b = 0;b < numCarriers/4 * (dataLength/2 + 1 - 2 * guard);b++) {
 				unsigned char oneByte = (symstream[b * 4] << 6) + (symstream[b * 4 + 1] << 4) + (symstream[b * 4 + 2] << 2) + symstream[b * 4 + 3];
 				if(oneByte != 0) fprintf(fileOut, "%c", oneByte);
 			}
