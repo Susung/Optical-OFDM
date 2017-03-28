@@ -12,7 +12,7 @@ run by
 	./ofdmRx
 ```
 
-#How it works
+# How it works
 Since we want to get real valued output from IFFT, the input complex matrix must have hermitian symmetry.
 Fortunately, the IFFT from FFTW3 already takes care of the symmetry so there is no need to apply the symmetry manually.
 Therefore, the total size of complex input must be : (# of subcarriers) * (FFT Length/2 + 1)
