@@ -10,7 +10,7 @@ int main(int argc, char*argv[]) {
 	FILE *fileIn;
 	FILE *fileOut;
 	char *input = "test";
-	char *output = "transmitted.txt";
+	char *output = "transmitted";
 	int dopt;
 	int numCarriers = 16;
 	int dataLength = 64;
@@ -82,13 +82,13 @@ int main(int argc, char*argv[]) {
 			for(int c = guard;c < dataLength/2 + 1 - guard;c++) {
 				unsigned char sym = symstream[r*(dataLength/2 + 1 - guard*2)+(c-guard)];
 				if(sym == 0) 
-					fftIn[r*(dataLength/2 + 1)+c] = 0.1 + I * 0.1;
+					fftIn[r*(dataLength/2 + 1)+c] = 0.707 + I * 0.707;
 				else if(sym == 1)
-					fftIn[r*(dataLength/2 + 1)+c] = 0.1 - I * 0.1;
+					fftIn[r*(dataLength/2 + 1)+c] = 0.707 - I * 0.707;
 				else if(sym == 2)
-					fftIn[r*(dataLength/2 + 1)+c] = -0.1 + I * 0.1;
+					fftIn[r*(dataLength/2 + 1)+c] = -0.707 + I * 0.707;
 				else
-					fftIn[r*(dataLength/2 + 1)+c] = -0.1 - I * 0.1;
+					fftIn[r*(dataLength/2 + 1)+c] = -0.707 - I * 0.707;
 				//printf("[%lf, %lf] ", creal(fftIn[r*(dataLength/2 + 1)+c]), cimag(fftIn[r*(dataLength/2 + 1)+c]));
 			}
 			for(int g = dataLength/2 + 1 - guard;g < dataLength/2 + 1;g++) {
@@ -105,11 +105,27 @@ int main(int argc, char*argv[]) {
 		fftw_plan txPlan = fftw_plan_dft_c2r_2d(size1, size2, fftIn, fftOut, FFTW_ESTIMATE);
 		fftw_execute(txPlan);
 		
+		union {
+			float a;
+			unsigned char bytes[4];
+		} converter;
+		
 		for(int c = 0;c < dataLength * numCarriers;c++) {
 			//printf("%lf\n", fftOut[c]);
 			if(fftOut[c] > high) high = fftOut[c];
 			if(fftOut[c] < low) low = fftOut[c];
-			fprintf(fileOut, "%lf\n", fftOut[c]);
+
+			converter.a = fftOut[c];
+			//printf("%lf\n", converter.a);
+			//printf("%02x", converter.bytes[0]);
+			//printf("%02x", converter.bytes[1]);
+			//printf("%02x", converter.bytes[2]);
+			//printf("%02x", converter.bytes[3]);
+			fwrite(&converter.bytes[0], 1, sizeof(converter.bytes[3]), fileOut);
+			fwrite(&converter.bytes[1], 1, sizeof(converter.bytes[2]), fileOut);
+			fwrite(&converter.bytes[2], 1, sizeof(converter.bytes[1]), fileOut);
+			fwrite(&converter.bytes[3], 1, sizeof(converter.bytes[0]), fileOut);
+
 		}
 
 		fftw_destroy_plan (txPlan);

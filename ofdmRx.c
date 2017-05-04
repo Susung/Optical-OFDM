@@ -5,12 +5,13 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <math.h>
+#include <string.h>
 
 int main(int argc, char*argv[]) {	
 	FILE *fileIn;
 	FILE *fileOut;
-	char *input = "transmitted.txt";
-	char *output = "output.txt";
+	char *input = "transmitted";
+	char *output = "image_out.bmp";
 	int dopt;
 	int numCarriers = 16;
 	int dataLength = 64;
@@ -40,16 +41,27 @@ int main(int argc, char*argv[]) {
 	}
 	
 	char *line = NULL;
-	size_t len = 0;
-	ssize_t read;
 	double *fftIn = (double*) malloc(sizeof(double) * numCarriers * dataLength);
 	int i = 0;
 	int guard = dataLength/16;
-	while((read = getline(&line, &len, fileIn)) != -1) {
-		char *ptr;
-		double ret;
-		ret = strtod(line, &ptr);
-		fftIn[i] = ret;
+	unsigned char ptr;
+	int k = 0;
+	union {
+		float a;
+		unsigned char bytes[4];
+	} converter;
+	while(fread(&ptr, 1, 1, fileIn) != 0) {
+		if(k < 4) {
+			converter.bytes[k] = ptr;
+			k++;
+			if(k == 4) {
+				k = 0;
+			} else {
+				continue;
+			}
+		}
+		fftIn[i] = converter.a;
+		//printf("%lf\n", fftIn[i]);
 		i++;
 		if(i == numCarriers * dataLength) {
 			int size1 = numCarriers;
@@ -80,7 +92,8 @@ int main(int argc, char*argv[]) {
 			
 			for(int b = 0;b < numCarriers/4 * (dataLength/2 + 1 - 2 * guard);b++) {
 				unsigned char oneByte = (symstream[b * 4] << 6) + (symstream[b * 4 + 1] << 4) + (symstream[b * 4 + 2] << 2) + symstream[b * 4 + 3];
-				if(oneByte != 0) fprintf(fileOut, "%c", oneByte);
+				//if(oneByte != 0) fprintf(fileOut, "%c", oneByte);
+				fprintf(fileOut, "%c", oneByte);
 			}
 			
 			free(fftOut);
